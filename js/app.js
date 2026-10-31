@@ -63,11 +63,14 @@
     RG_VISION.applySettings(s);
     engine.setOptions({
       holdMs: s.holdMs,
-      confirmMs: s.confirmMs ?? 120,
-      repeatMs: s.repeatMs ?? 260,
+      confirmMs: s.confirmMs ?? 100,
+      repeatMs: s.repeatMs ?? 220,
       pinchThreshold: s.pinchThreshold ?? 0.30,
       swipeThreshold: s.swipeThreshold ?? 0.12,
-      gestureSensitivity: s.gestureSensitivity ?? 1
+      movementDeadzone: s.movementDeadzone ?? 0.04,
+      gestureSensitivity: s.gestureSensitivity ?? 1.15,
+      stabilityWindow: s.stabilityWindow ?? 6,
+      adaptiveThreshold: s.adaptiveThreshold !== false
     });
   }
 

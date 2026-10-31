@@ -5,8 +5,6 @@
 const RG_CONFIG = {
   appName: 'Gesto Player',
 
-  /* 5 videos. Coloca los archivos en la carpeta /videos con estos nombres
-     (o cambia la ruta "src"). Formato recomendado: MP4 (H.264 + AAC). */
   videos: [
     { title: 'Video 1 · Introducción',  src: 'videos/video1.mp4', poster: '' },
     { title: 'Video 2 · Demostración',  src: 'videos/video2.mp4', poster: '' },
@@ -46,14 +44,17 @@ const RG_CONFIG = {
     complexity: 1,
     minDetect: 0.6,
     minTrack: 0.5,
-    smoothing: 0.5,
-    margin: 0.1,
-    holdMs: 400,
-    confirmMs: 120,
-    repeatMs: 260,
-    pinchThreshold: 0.3,
+    smoothing: 0.45,
+    margin: 0.09,
+    holdMs: 420,
+    confirmMs: 100,
+    repeatMs: 220,
+    pinchThreshold: 0.30,
     swipeThreshold: 0.12,
-    gestureSensitivity: 1,
+    movementDeadzone: 0.04,
+    gestureSensitivity: 1.15,
+    stabilityWindow: 6,
+    adaptiveThreshold: true,
     showHand: true,
     showCursor: true,
     showPreview: true,
@@ -63,7 +64,7 @@ const RG_CONFIG = {
     effects: 'completos',
     mirror: true,
     autoHideMs: 3000,
-    pauseOnNoHand: false,
+    pauseOnNoHand: true,
     noHandPauseMs: 1800,
     seekStep: 10,
     volumeStep: 0.05

@@ -216,11 +216,12 @@ const RG_UI = (() => {
     sec.appendChild(field('Cuadros por segundo', segmented('fps', [[10, '10'], [15, '15'], [24, '24'], [30, '30']], s.fps)));
     sec.appendChild(field('Modelo de IA', segmented('complexity', [[0, 'Ligero'], [1, 'Preciso']], s.complexity)));
     sec.appendChild(field('Confianza de detección', range('minDetect', 0.3, 0.9, 0.05, s.minDetect, v => (+v).toFixed(2))));
-    sec.appendChild(field('Sensibilidad de gestos', range('gestureSensitivity', 0.7, 1.5, 0.05, s.gestureSensitivity ?? 1, v => (+v).toFixed(2)), 'más alta = más reactiva'));
+    sec.appendChild(field('Sensibilidad de gestos', range('gestureSensitivity', 0.7, 1.5, 0.05, s.gestureSensitivity ?? 1.15, v => (+v).toFixed(2)), 'más alta = más reactiva'));
     sec.appendChild(field('Umbral de pellizco', range('pinchThreshold', 0.22, 0.42, 0.01, s.pinchThreshold ?? 0.3, v => (+v).toFixed(2)), 'evita clics accidentales'));
     sec.appendChild(field('Umbral de deslizamiento', range('swipeThreshold', 0.06, 0.25, 0.01, s.swipeThreshold ?? 0.12, v => (+v).toFixed(2)), 'controla rebotes al mover la mano'));
-    sec.appendChild(field('Confirmación de gesto', range('confirmMs', 60, 250, 10, s.confirmMs ?? 120, v => v + ' ms')));
-    sec.appendChild(field('Repetición de volumen', range('repeatMs', 150, 500, 10, s.repeatMs ?? 260, v => v + ' ms')));
+    sec.appendChild(field('Confirmación de gesto', range('confirmMs', 60, 250, 10, s.confirmMs ?? 100, v => v + ' ms')));
+    sec.appendChild(field('Repetición de volumen', range('repeatMs', 150, 500, 10, s.repeatMs ?? 220, v => v + ' ms')));
+    sec.appendChild(field('Ventana de consenso', segmented('stabilityWindow', [[4, '4'], [6, '6'], [8, '8'], [10, '10']], s.stabilityWindow ?? 6), 'más frames = más estabilidad'));
 
     sec = section('Puntero (mouse con la mano)');
     sec.appendChild(field('Suavizado', range('smoothing', 0, 1, 0.05, s.smoothing, v => Math.round(v * 100) + '%'), 'más = más estable'));
@@ -232,6 +233,8 @@ const RG_UI = (() => {
     sec = section('Comportamiento');
     sec.appendChild(field('Pausar al perder la mano', toggle('pauseOnNoHand', !!s.pauseOnNoHand)));
     sec.appendChild(field('Tiempo sin mano para pausar', range('noHandPauseMs', 800, 4000, 100, s.noHandPauseMs ?? 1800, v => v + ' ms')));
+    sec.appendChild(field('Umbral de movimiento', range('movementDeadzone', 0.02, 0.12, 0.01, s.movementDeadzone ?? 0.04, v => (+v).toFixed(2)), 'evita micro-movimientos'));
+    sec.appendChild(field('Threshold adaptativo', toggle('adaptiveThreshold', s.adaptiveThreshold !== false)));
 
     sec = section('Interfaz');
     sec.appendChild(field('Mini cámara de diagnóstico', toggle('showPreview', s.showPreview)));

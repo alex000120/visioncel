@@ -1,26 +1,31 @@
 /* ==========================================================================
    RECONOCIMIENTO DE GESTOS
    - analyze(): calcula dedos extendidos, pellizco, dirección del pulgar y puntero
-   - classify(): convierte eso en un nombre de gesto
-   - GestureEngine: confirma gestos en el tiempo y dispara acciones
+   - classify(): convierte eso en un nombre de gesto usando consenso temporal
+   - GestureEngine: confirma gestos y dispara acciones con más robustez.
    ========================================================================== */
 const RG_GESTURE = (() => {
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-  /* Índices de MediaPipe Hands:
-     0 muñeca · 2 pulgar MCP · 3 pulgar IP · 4 pulgar punta
-     6/8 índice PIP/punta · 9 medio MCP · 10/12 medio · 14/16 anular · 18/20 meñique */
   function analyze(lm) {
     const wrist = lm[0];
     const scale = dist(wrist, lm[9]) || 0.001;
     const ext = (tip, pip) => dist(lm[tip], wrist) > dist(lm[pip], wrist) * 1.12;
 
     const fingers = {
-      index:  ext(8, 6),
+      index: ext(8, 6),
       middle: ext(12, 10),
-      ring:   ext(16, 14),
-      pinky:  ext(20, 18)
+      ring: ext(16, 14),
+      pinky: ext(20, 18)
     };
+
+    const palmCenter = {
+      x: (lm[0].x + lm[5].x + lm[9].x + lm[13].x + lm[17].x) / 5,
+      y: (lm[0].y + lm[5].y + lm[9].y + lm[13].y + lm[17].y) / 5
+    };
+
+    const palmWidth = dist(lm[5], lm[17]) || 0;
+    const fingerSpread = [8, 12, 16, 20].reduce((sum, idx) => sum + dist(lm[idx], palmCenter), 0) / 4;
 
     return {
       fingers,
@@ -29,8 +34,11 @@ const RG_GESTURE = (() => {
       pinchRatio: dist(lm[4], lm[8]) / scale,
       cursor: { x: 1 - lm[8].x, y: lm[8].y },
       wristX: 1 - wrist.x,
-      openPalm: Object.values(fingers).filter(Boolean).length >= 3,
-      spread: Object.values(fingers).filter(Boolean).length
+      palmCenter: { x: 1 - palmCenter.x, y: palmCenter.y },
+      palmWidth,
+      handScale: scale,
+      spread: fingerSpread,
+      openPalm: Object.values(fingers).filter(Boolean).length >= 3
     };
   }
 
@@ -39,7 +47,7 @@ const RG_GESTURE = (() => {
     const up = [index, middle, ring, pinky].filter(Boolean).length;
 
     if (a.pinchRatio < 0.32) return 'pinch';
-    if (up === 4) return 'palm';
+    if (up === 4 && a.openPalm && a.palmWidth > a.handScale * 0.38) return 'palm';
     if (up === 0) {
       if (a.thumbExt && a.thumbDy > 0.3) return 'vol_up';
       if (a.thumbExt && a.thumbDy < -0.3) return 'vol_down';
@@ -56,7 +64,6 @@ const RG_GESTURE = (() => {
   return { analyze, classify };
 })();
 
-/* Gestos que disparan una acción (una sola vez tras sostenerlos) */
 const RG_ACTION_MAP = {
   palm: 'toggle-play',
   fist: 'mute',
@@ -72,12 +79,15 @@ class GestureEngine {
   constructor(handlers) {
     this.h = handlers;
     this.opts = {
-      holdMs: 400,
-      confirmMs: 120,
-      repeatMs: 260,
+      holdMs: 420,
+      confirmMs: 100,
+      repeatMs: 220,
       pinchThreshold: 0.30,
       swipeThreshold: 0.12,
-      gestureSensitivity: 1
+      movementDeadzone: 0.04,
+      gestureSensitivity: 1.15,
+      stabilityWindow: 6,
+      adaptiveThreshold: true
     };
     this.pinch = false;
     this.stable = 'none';
@@ -90,21 +100,38 @@ class GestureEngine {
     this.lastSwipeAt = 0;
     this.swipeLockUntil = 0;
     this.history = [];
+    this.rawHistory = [];
     this.moving = false;
   }
 
   setOptions(o) { Object.assign(this.opts, o); }
+
+  mostFrequent(items) {
+    if (!items.length) return 'none';
+    const counts = new Map();
+    let best = 'none';
+    let bestCount = 0;
+    for (const item of items) {
+      const c = (counts.get(item) || 0) + 1;
+      counts.set(item, c);
+      if (c > bestCount || (c === bestCount && item === 'none')) {
+        best = item;
+        bestCount = c;
+      }
+    }
+    return best;
+  }
 
   update(hand, now) {
     if (!hand) { this.reset(); return null; }
 
     const a = RG_GESTURE.analyze(hand);
     const pinchThreshold = this.opts.pinchThreshold ?? 0.30;
-    const swipeThreshold = (this.opts.swipeThreshold ?? 0.12) / Math.max(0.5, this.opts.gestureSensitivity || 1);
+    const adaptiveThreshold = this.opts.adaptiveThreshold !== false ? pinchThreshold * (1.05 + (0.05 - Math.min(0.05, Math.max(0, a.handScale - 0.1))) * 2) : pinchThreshold;
 
     const wasPinch = this.pinch;
-    if (!this.pinch && a.pinchRatio < pinchThreshold) this.pinch = true;
-    else if (this.pinch && a.pinchRatio > pinchThreshold + 0.12) this.pinch = false;
+    if (!this.pinch && a.pinchRatio < adaptiveThreshold) this.pinch = true;
+    else if (this.pinch && a.pinchRatio > adaptiveThreshold + 0.12) this.pinch = false;
 
     this.h.onCursor(a.cursor.x, a.cursor.y, hand);
 
@@ -117,32 +144,40 @@ class GestureEngine {
       return 'pinch';
     }
 
-    this.history.push({ x: a.wristX, t: now });
+    this.history.push({ x: a.palmCenter.x, t: now });
     this.history = this.history.filter(p => now - p.t <= 300);
     const xs = this.history.map(p => p.x);
-    this.moving = xs.length > 1 && (Math.max(...xs) - Math.min(...xs)) > 0.04;
+    const deadzone = this.opts.movementDeadzone ?? 0.04;
+    this.moving = xs.length > 1 && (Math.max(...xs) - Math.min(...xs)) > deadzone;
 
     let raw = RG_GESTURE.classify(a);
+    this.rawHistory.push(raw);
+    if (this.rawHistory.length > (this.opts.stabilityWindow ?? 6)) this.rawHistory.shift();
+    const consensus = this.mostFrequent(this.rawHistory);
+    const resolved = consensus === 'none' ? raw : consensus;
 
-    if (raw === 'palm' && this.history.length > 1 && now > this.swipeLockUntil) {
+    if (resolved === 'palm' && this.history.length > 1 && now > this.swipeLockUntil) {
       const oldest = this.history[0];
-      const dx = a.wristX - oldest.x;
-      if (Math.abs(dx) > swipeThreshold && now - oldest.t >= 100) {
+      const dx = a.palmCenter.x - oldest.x;
+      const threshold = (this.opts.swipeThreshold ?? 0.12) / Math.max(0.5, this.opts.gestureSensitivity || 1);
+      if (Math.abs(dx) > threshold && now - oldest.t >= 100) {
         this.h.onAction(dx > 0 ? 'seek+' : 'seek-');
         this.h.onGesture('swipe');
         this.swipeLockUntil = now + 700;
         this.history = [];
         this.moving = false;
+        this.rawHistory = [];
       }
     }
 
-    this.setStable(raw, now);
-    return raw;
+    this.setStable(resolved, now);
+    return resolved;
   }
 
   reset() {
     if (this.pinch) { this.pinch = false; this.h.onPinchEnd(); }
     this.history = [];
+    this.rawHistory = [];
     this.moving = false;
     this.candidate = 'none';
     if (this.stable !== 'none') {
@@ -157,7 +192,7 @@ class GestureEngine {
       this.candidate = id;
       this.candidateSince = now;
     }
-    if (id !== this.stable && now - this.candidateSince >= (this.opts.confirmMs ?? 120)) {
+    if (id !== this.stable && now - this.candidateSince >= (this.opts.confirmMs ?? 100)) {
       this.stable = id;
       this.fired = false;
       this.enteredAt = now;
@@ -177,8 +212,8 @@ class GestureEngine {
     const held = now - this.enteredAt;
 
     if (s === 'vol_up' || s === 'vol_down') {
-      const repeatMs = this.opts.repeatMs ?? 260;
-      if (held >= (this.opts.holdMs ?? 400) && now - this.lastRepeat >= repeatMs) {
+      const repeatMs = this.opts.repeatMs ?? 220;
+      if (held >= (this.opts.holdMs ?? 420) && now - this.lastRepeat >= repeatMs) {
         this.lastRepeat = now;
         this.h.onAction(act);
       }
@@ -186,7 +221,7 @@ class GestureEngine {
     }
 
     if (this.fired) return;
-    if (held >= (this.opts.holdMs ?? 400) && now - this.lastFire > 600 && now > this.swipeLockUntil) {
+    if (held >= (this.opts.holdMs ?? 420) && now - this.lastFire > 600 && now > this.swipeLockUntil) {
       this.fired = true;
       this.lastFire = now;
       this.h.onAction(act);
