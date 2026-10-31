@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06070d">
+  <meta name="description" content="Reproductor de videos controlado con gestos de las manos a través de la cámara.">
+  <title>Gesto Player · Control por gestos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="show-controls">
+
+  <!-- Video a pantalla completa -->
+  <video id="player" playsinline preload="auto"></video>
+
+  <!-- Mano dibujada sobre la pantalla + cursor virtual -->
+  <canvas id="overlay"></canvas>
+  <div id="cursor" aria-hidden="true"><span class="ring"></span><span class="dot"></span></div>
+  <div id="ripples" aria-hidden="true"></div>
+
+  <!-- Cámara oculta (fuente de la IA) -->
+  <video id="cam" playsinline muted></video>
+
+  <!-- Barra superior -->
+  <header id="topbar">
+    <div class="brand"><span class="logo">◉</span> Gesto Player</div>
+    <div class="now">
+      <span id="title">Cargando…</span>
+      <span id="counter"></span>
+    </div>
+  </header>
+
+  <!-- Mini cámara con diagnóstico de gestos -->
+  <aside id="pip" class="glass" aria-label="Vista de la cámara">
+    <div class="pip-head">
+      <span class="pip-title">Cámara</span>
+      <button id="btn-pip-toggle" class="mini" data-hit title="Ocultar cámara">✕</button>
+    </div>
+    <canvas id="preview"></canvas>
+    <div class="hud">
+      <div class="hud-row"><span id="det-dot" class="dot-status"></span><span id="det-hand">Sin mano</span><span id="det-fps" class="fps">0 FPS</span></div>
+      <div class="hud-row gesture-row"><span class="lbl">Gesto</span><b id="det-gesture">—</b></div>
+    </div>
+  </aside>
+
+  <!-- Barra de control inferior -->
+  <footer id="controls" class="glass">
+    <div class="slider seek" data-slider="seek" data-hit>
+      <div class="track"><div id="seek-fill" class="fill"></div></div>
+      <span id="seek-knob" class="knob"></span>
+    </div>
+    <div class="ctrl-row">
+      <div class="group">
+        <button id="btn-prev" class="icon" data-hit title="Anterior (B)">⏮</button>
+        <button id="btn-play" class="icon primary" data-hit title="Reproducir / pausa (Espacio)"><span id="play-icon">▶</span></button>
+        <button id="btn-next" class="icon" data-hit title="Siguiente (N)">⏭</button>
+        <button id="btn-mute" class="icon" data-hit title="Silenciar (M)"><span id="mute-icon">🔊</span></button>
+        <div class="slider vol" data-slider="volume" data-hit>
+          <div class="track"><div id="vol-fill" class="fill"></div></div>
+          <span id="vol-knob" class="knob"></span>
+        </div>
+        <span id="time" class="time">0:00 / 0:00</span>
+      </div>
+      <div class="group">
+        <button id="btn-playlist" class="text" data-hit title="Lista de videos (L)">☰ <span>Videos</span></button>
+        <button id="btn-settings" class="text" data-hit title="Ajustes (S)">⚙ <span>Ajustes</span></button>
+        <button id="btn-fs" class="icon" data-hit title="Pantalla completa (F)">⛶</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Lista de videos -->
+  <aside id="playlist" class="panel glass" aria-label="Lista de videos">
+    <div class="panel-head">
+      <h2>Videos</h2>
+      <button id="btn-close-playlist" class="mini" data-hit>✕</button>
+    </div>
+    <div id="playlist-list" class="panel-body" data-scroll></div>
+  </aside>
+
+  <!-- Ajustes por dispositivo -->
+  <aside id="settings" class="panel glass" aria-label="Configuración">
+    <div class="panel-head">
+      <h2>Configuración</h2>
+      <button id="btn-close-settings" class="mini" data-hit>✕</button>
+    </div>
+    <div id="settings-body" class="panel-body" data-scroll></div>
+  </aside>
+
+  <!-- Pantalla de inicio (la cámara necesita un toque del usuario) -->
+  <section id="start" class="start">
+    <div class="start-card glass">
+      <div class="start-logo">◉</div>
+      <h1>Gesto Player</h1>
+      <p>Controla los videos con las manos a distancia. Activa la cámara y muestra tu mano.</p>
+      <button id="btn-start" class="cta">Activar cámara y empezar</button>
+      <button id="btn-skip" class="link" hidden>Continuar sin cámara</button>
+      <p id="status" class="status" role="status"></p>
+      <small class="hint">Teclado de respaldo: Espacio, ← →, ↑ ↓, M, N, B, S, F, L</small>
+    </div>
+  </section>
+
+  <!-- Aviso si falta un video -->
+  <div id="missing" class="notice glass">
+    <p id="missing-text"></p>
+    <button id="missing-close" class="text" data-hit>Entendido</button>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/gestures.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/vision.js"></script>
+  <script src="js/pointer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
