@@ -51,11 +51,16 @@ const RG_CONFIG = {
     complexity: 1,
     minDetect: 0.6,
     minTrack: 0.5,
-    smoothing: 0.5,     // 0 = puntero directo, 1 = muy suave
-    margin: 0.1,        // zona muerta de la cámara (permite llegar a las esquinas)
-    holdMs: 400,        // tiempo que hay que sostener un gesto para activarlo
-    showHand: true,     // dibujar la mano sobre el video
-    showPreview: true,  // mini cámara
+    smoothing: 0.5,
+    margin: 0.1,
+    holdMs: 400,
+    confirmMs: 120,
+    repeatMs: 260,
+    pinchThreshold: 0.3,
+    swipeThreshold: 0.12,
+    gestureSensitivity: 1,
+    showHand: true,
+    showPreview: true,
     previewSize: 240,
     showLandmarks: true,
     effects: 'completos',

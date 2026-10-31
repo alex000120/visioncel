@@ -16,7 +16,6 @@ const RG_UI = (() => {
   let settingsOpen = false;
   let playlistOpen = false;
 
-  /* ---------- Mostrar / ocultar controles ---------- */
   function showControls() {
     document.body.classList.add('show-controls');
     clearTimeout(hideTimer);
@@ -27,7 +26,6 @@ const RG_UI = (() => {
     }, ms);
   }
 
-  /* ---------- Progreso y volumen ---------- */
   function setFill(fillEl, knobEl, f) {
     const p = (Math.max(0, Math.min(1, f)) * 100).toFixed(3) + '%';
     if (fillEl) fillEl.style.width = p;
@@ -62,7 +60,6 @@ const RG_UI = (() => {
     renderPlaylist();
   }
 
-  /* ---------- Lista de videos ---------- */
   function renderPlaylist() {
     const box = $('playlist-list');
     box.innerHTML = '';
@@ -84,7 +81,6 @@ const RG_UI = (() => {
     showControls();
   }
 
-  /* ---------- Notificaciones ---------- */
   let toastTimer = null;
   function toast(icon, text) {
     const t = $('toast');
@@ -105,7 +101,6 @@ const RG_UI = (() => {
     setTimeout(() => r.remove(), 600);
   }
 
-  /* ---------- Guía de gestos (resalta el gesto detectado) ---------- */
   function highlightGesture(id) {
     document.querySelectorAll('.guide-row').forEach(r => {
       r.classList.toggle('detected', r.dataset.gesture === id);
@@ -115,7 +110,6 @@ const RG_UI = (() => {
     $('det-dot').classList.toggle('on', !!g && id !== 'none');
   }
 
-  /* ---------- Panel de ajustes ---------- */
   function field(label, control, hint) {
     const f = document.createElement('div');
     f.className = 'field';
@@ -200,7 +194,6 @@ const RG_UI = (() => {
       return s;
     };
 
-    // Dispositivo y perfil
     let sec = section('Dispositivo');
     const info = document.createElement('div');
     info.className = 'device-info';
@@ -217,21 +210,23 @@ const RG_UI = (() => {
     reset.addEventListener('click', () => { RG_SETTINGS.reset(); renderSettings(); settingsChange('__reset'); toast('↺', 'Ajustes restablecidos'); });
     sec.appendChild(reset);
 
-    // Rendimiento
     sec = section('Rendimiento');
     sec.appendChild(field('Resolución de análisis', segmented('width', [[256, '256'], [320, '320'], [400, '400'], [480, '480'], [640, '640']], s.width), 'menos = más fluido'));
     sec.appendChild(field('Cuadros por segundo', segmented('fps', [[10, '10'], [15, '15'], [24, '24'], [30, '30']], s.fps)));
     sec.appendChild(field('Modelo de IA', segmented('complexity', [[0, 'Ligero'], [1, 'Preciso']], s.complexity)));
     sec.appendChild(field('Confianza de detección', range('minDetect', 0.3, 0.9, 0.05, s.minDetect, v => (+v).toFixed(2))));
+    sec.appendChild(field('Sensibilidad de gestos', range('gestureSensitivity', 0.7, 1.5, 0.05, s.gestureSensitivity ?? 1, v => (+v).toFixed(2)), 'más alta = más reactiva'));
+    sec.appendChild(field('Umbral de pellizco', range('pinchThreshold', 0.22, 0.42, 0.01, s.pinchThreshold ?? 0.3, v => (+v).toFixed(2)), 'evita clics accidentales'));
+    sec.appendChild(field('Umbral de deslizamiento', range('swipeThreshold', 0.06, 0.25, 0.01, s.swipeThreshold ?? 0.12, v => (+v).toFixed(2)), 'controla rebotes al mover la mano'));
+    sec.appendChild(field('Confirmación de gesto', range('confirmMs', 60, 250, 10, s.confirmMs ?? 120, v => v + ' ms')));
+    sec.appendChild(field('Repetición de volumen', range('repeatMs', 150, 500, 10, s.repeatMs ?? 260, v => v + ' ms')));
 
-    // Puntero
     sec = section('Puntero (mouse con la mano)');
     sec.appendChild(field('Suavizado', range('smoothing', 0, 1, 0.05, s.smoothing, v => Math.round(v * 100) + '%'), 'más = más estable'));
     sec.appendChild(field('Zona de alcance', range('margin', 0, 0.3, 0.01, s.margin, v => Math.round(v * 100) + '%'), 'llega a las esquinas'));
     sec.appendChild(field('Tiempo para activar gestos', range('holdMs', 200, 900, 50, s.holdMs, v => v + ' ms')));
     sec.appendChild(field('Mostrar mano en pantalla', toggle('showHand', s.showHand)));
 
-    // Interfaz
     sec = section('Interfaz');
     sec.appendChild(field('Mini cámara de diagnóstico', toggle('showPreview', s.showPreview)));
     sec.appendChild(field('Tamaño de la mini cámara', segmented('previewSize', [[160, 'S'], [200, 'M'], [240, 'L'], [280, 'XL']], s.previewSize)));
@@ -239,7 +234,6 @@ const RG_UI = (() => {
     sec.appendChild(field('Efectos visuales', segmented('effects', [['completos', 'Completos'], ['reducidos', 'Reducidos'], ['mínimos', 'Mínimos']], s.effects), 'mínimos = más fluido'));
     sec.appendChild(field('Ocultar controles tras', range('autoHideMs', 1000, 6000, 500, s.autoHideMs, v => (v / 1000).toFixed(1) + ' s')));
 
-    // Guía de gestos
     sec = section('Gestos y funciones');
     const box = document.createElement('div');
     box.className = 'guide';
@@ -269,7 +263,6 @@ const RG_UI = (() => {
     showControls();
   }
 
-  /* ---------- Sliders con mouse/táctil (además del gesto) ---------- */
   function bindSliders() {
     document.querySelectorAll('[data-slider]').forEach(el => {
       let down = false;
@@ -307,7 +300,6 @@ const RG_UI = (() => {
     ['pointermove', 'pointerdown', 'touchstart', 'keydown'].forEach(ev =>
       window.addEventListener(ev, showControls, { passive: true }));
 
-    // Animación fluida de la barra de progreso (independiente de timeupdate)
     const loop = () => { if (!RG_PLAYER.el.paused) updateProgress(); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
 

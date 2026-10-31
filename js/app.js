@@ -1,8 +1,3 @@
-/* ==========================================================================
-   APP PRINCIPAL
-   Une cámara → gestos → acciones del reproductor, y los botones de la interfaz.
-   Cada gesto dispara una acción concreta (ver ACTIONS).
-   ========================================================================== */
 (() => {
   const $ = id => document.getElementById(id);
   let settings = null;
@@ -38,7 +33,12 @@
       RG_PLAYER.toggleFullscreen();
       RG_UI.toast('⛶', 'Pantalla completa');
     },
-    'playlist': () => RG_UI.togglePlaylist()
+    'playlist': () => RG_UI.togglePlaylist(),
+    'preview': () => {
+      const next = !settings.showPreview;
+      onSettingsChange('showPreview', next);
+      RG_UI.toast(next ? '📷' : '🕶️', next ? 'Mini cámara activada' : 'Mini cámara ocultada');
+    }
   };
 
   function dispatch(name) {
@@ -57,7 +57,14 @@
     document.documentElement.style.setProperty('--pip-w', s.previewSize + 'px');
     RG_POINTER.applySettings(s);
     RG_VISION.applySettings(s);
-    engine.setOptions({ holdMs: s.holdMs });
+    engine.setOptions({
+      holdMs: s.holdMs,
+      confirmMs: s.confirmMs ?? 120,
+      repeatMs: s.repeatMs ?? 260,
+      pinchThreshold: s.pinchThreshold ?? 0.30,
+      swipeThreshold: s.swipeThreshold ?? 0.12,
+      gestureSensitivity: s.gestureSensitivity ?? 1
+    });
   }
 
   function onSettingsChange(key, value) {
@@ -76,7 +83,7 @@
   function onFrame({ landmarks, fps, now }) {
     $('det-fps').textContent = fps + ' FPS';
     $('det-hand').textContent = landmarks ? 'Mano detectada' : 'Sin mano';
-    if (landmarks) RG_UI.showControls();   // la mano también despierta la barra de control
+    if (landmarks) RG_UI.showControls();
     engine.update(landmarks, now);
   }
 
@@ -113,7 +120,7 @@
     'ArrowRight': 'seek+', 'ArrowLeft': 'seek-',
     'ArrowUp': 'vol+', 'ArrowDown': 'vol-',
     'm': 'mute', 'n': 'next', 'b': 'prev',
-    's': 'menu', 'f': 'fullscreen', 'l': 'playlist'
+    's': 'menu', 'f': 'fullscreen', 'l': 'playlist', 'p': 'preview'
   };
 
   function bindUI() {
@@ -158,7 +165,6 @@
     applyVisual(settings);
     bindUI();
 
-    // Si el navegador bloquea el video o la cámara, la app sigue usable con mouse/teclado
     RG_PLAYER.on('autoplay-blocked', () => {});
   }
 

@@ -12,23 +12,25 @@ const RG_GESTURE = (() => {
      6/8 índice PIP/punta · 9 medio MCP · 10/12 medio · 14/16 anular · 18/20 meñique */
   function analyze(lm) {
     const wrist = lm[0];
-    const scale = dist(wrist, lm[9]) || 0.001;          // tamaño de la mano (escala)
+    const scale = dist(wrist, lm[9]) || 0.001;
     const ext = (tip, pip) => dist(lm[tip], wrist) > dist(lm[pip], wrist) * 1.12;
 
+    const fingers = {
+      index:  ext(8, 6),
+      middle: ext(12, 10),
+      ring:   ext(16, 14),
+      pinky:  ext(20, 18)
+    };
+
     return {
-      fingers: {
-        index:  ext(8, 6),
-        middle: ext(12, 10),
-        ring:   ext(16, 14),
-        pinky:  ext(20, 18)
-      },
+      fingers,
       thumbExt: dist(lm[4], wrist) > dist(lm[3], wrist) * 1.1,
-      // > 0 si la punta del pulgar está arriba de su base, < 0 si está abajo
       thumbDy: (lm[2].y - lm[4].y) / scale,
       pinchRatio: dist(lm[4], lm[8]) / scale,
-      // Puntero: punta del índice en espejo (la cámara frontal se ve como espejo)
       cursor: { x: 1 - lm[8].x, y: lm[8].y },
-      wristX: 1 - wrist.x
+      wristX: 1 - wrist.x,
+      openPalm: Object.values(fingers).filter(Boolean).length >= 3,
+      spread: Object.values(fingers).filter(Boolean).length
     };
   }
 
@@ -36,13 +38,14 @@ const RG_GESTURE = (() => {
     const { index, middle, ring, pinky } = a.fingers;
     const up = [index, middle, ring, pinky].filter(Boolean).length;
 
+    if (a.pinchRatio < 0.32) return 'pinch';
     if (up === 4) return 'palm';
     if (up === 0) {
-      if (a.thumbExt && a.thumbDy > 0.3)  return 'vol_up';
+      if (a.thumbExt && a.thumbDy > 0.3) return 'vol_up';
       if (a.thumbExt && a.thumbDy < -0.3) return 'vol_down';
       return 'fist';
     }
-    if (index && middle && ring && !pinky)  return 'prev';
+    if (index && middle && ring && !pinky) return 'prev';
     if (index && middle && !ring && !pinky) return 'next';
     if (index && !middle && !ring && pinky) return 'menu';
     if (!index && !middle && !ring && pinky && a.thumbExt) return 'fullscreen';
@@ -66,11 +69,16 @@ const RG_ACTION_MAP = {
 };
 
 class GestureEngine {
-  /* handlers: onCursor(x,y), onPinchStart(x,y), onPinchMove(x,y), onPinchEnd(),
-               onAction(nombre), onGesture(id) */
   constructor(handlers) {
     this.h = handlers;
-    this.opts = { holdMs: 400, confirmMs: 120 };
+    this.opts = {
+      holdMs: 400,
+      confirmMs: 120,
+      repeatMs: 260,
+      pinchThreshold: 0.30,
+      swipeThreshold: 0.12,
+      gestureSensitivity: 1
+    };
     this.pinch = false;
     this.stable = 'none';
     this.candidate = 'none';
@@ -87,16 +95,16 @@ class GestureEngine {
 
   setOptions(o) { Object.assign(this.opts, o); }
 
-  /* Llamar en cada detección. hand = landmarks o null si no hay mano */
   update(hand, now) {
     if (!hand) { this.reset(); return null; }
 
     const a = RG_GESTURE.analyze(hand);
+    const pinchThreshold = this.opts.pinchThreshold ?? 0.30;
+    const swipeThreshold = (this.opts.swipeThreshold ?? 0.12) / Math.max(0.5, this.opts.gestureSensitivity || 1);
 
-    // Pellizco con histéresis: entra < 0.30, sale > 0.45 (evita parpadeos)
     const wasPinch = this.pinch;
-    if (!this.pinch && a.pinchRatio < 0.30) this.pinch = true;
-    else if (this.pinch && a.pinchRatio > 0.45) this.pinch = false;
+    if (!this.pinch && a.pinchRatio < pinchThreshold) this.pinch = true;
+    else if (this.pinch && a.pinchRatio > pinchThreshold + 0.12) this.pinch = false;
 
     this.h.onCursor(a.cursor.x, a.cursor.y, hand);
 
@@ -109,7 +117,6 @@ class GestureEngine {
       return 'pinch';
     }
 
-    // Historial de la muñeca para detectar movimiento y deslizamiento
     this.history.push({ x: a.wristX, t: now });
     this.history = this.history.filter(p => now - p.t <= 300);
     const xs = this.history.map(p => p.x);
@@ -120,7 +127,7 @@ class GestureEngine {
     if (raw === 'palm' && this.history.length > 1 && now > this.swipeLockUntil) {
       const oldest = this.history[0];
       const dx = a.wristX - oldest.x;
-      if (Math.abs(dx) > 0.2 && now - oldest.t >= 100) {
+      if (Math.abs(dx) > swipeThreshold && now - oldest.t >= 100) {
         this.h.onAction(dx > 0 ? 'seek+' : 'seek-');
         this.h.onGesture('swipe');
         this.swipeLockUntil = now + 700;
@@ -145,13 +152,12 @@ class GestureEngine {
     }
   }
 
-  /* Confirma el gesto nuevo solo si se mantuvo confirmMs */
   setStable(id, now) {
     if (id !== this.candidate) {
       this.candidate = id;
       this.candidateSince = now;
     }
-    if (id !== this.stable && now - this.candidateSince >= this.opts.confirmMs) {
+    if (id !== this.stable && now - this.candidateSince >= (this.opts.confirmMs ?? 120)) {
       this.stable = id;
       this.fired = false;
       this.enteredAt = now;
@@ -166,14 +172,13 @@ class GestureEngine {
     const act = RG_ACTION_MAP[s];
     if (!act) return;
 
-    // Una palma en movimiento no es "palma quieta": reinicia el tiempo de espera
     if (s === 'palm' && this.moving) this.enteredAt = now;
 
     const held = now - this.enteredAt;
 
-    // Volumen: se dispara y se repite mientras se sostiene
     if (s === 'vol_up' || s === 'vol_down') {
-      if (held >= this.opts.holdMs && now - this.lastRepeat >= 260) {
+      const repeatMs = this.opts.repeatMs ?? 260;
+      if (held >= (this.opts.holdMs ?? 400) && now - this.lastRepeat >= repeatMs) {
         this.lastRepeat = now;
         this.h.onAction(act);
       }
@@ -181,7 +186,7 @@ class GestureEngine {
     }
 
     if (this.fired) return;
-    if (held >= this.opts.holdMs && now - this.lastFire > 600 && now > this.swipeLockUntil) {
+    if (held >= (this.opts.holdMs ?? 400) && now - this.lastFire > 600 && now > this.swipeLockUntil) {
       this.fired = true;
       this.lastFire = now;
       this.h.onAction(act);
