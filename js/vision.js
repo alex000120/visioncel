@@ -1,9 +1,9 @@
 /* ==========================================================================
-   VISIÓN: cámara + MediaPipe Hands + mini cámara de diagnóstico
-   - Reduce la imagen según el perfil (menos píxeles = más fluidez)
-   - Limita los FPS de detección para no saturar el equipo
-   - Soporta dos manos, priorizando la más dominante para evitar conflictos
-   ========================================================================== */
+    VISIÓN: cámara + MediaPipe Hands + mini cámara de diagnóstico
+    - Reduce la imagen según el perfil (menos píxeles = más fluidez)
+    - Limita los FPS de detección para no saturar el equipo
+    - Soporta dos manos, priorizando la más dominante para evitar conflictos
+    ========================================================================== */
 const RG_VISION = (() => {
   const cam = document.getElementById('cam');
   const prev = document.getElementById('preview');
@@ -29,8 +29,14 @@ const RG_VISION = (() => {
   let fpsStart = 0;
   let fps = 0;
   let handsReady = false;
+  let farewellHoldStart = 0;
+  let farewellLastTriggeredAt = 0;
 
   const hasCamera = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+  function dist(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y, (a.z ?? 0) - (b.z ?? 0));
+  }
 
   function scoreHand(lm) {
     if (!lm || !lm.length) return -Infinity;
@@ -56,6 +62,67 @@ const RG_VISION = (() => {
       }
     }
     return best;
+  }
+
+  function handHeartScore(hand) {
+    if (!hand || hand.length < 21) return 0;
+    const wrist = hand[0];
+    const thumb = hand[4];
+    const indexTip = hand[8];
+    const middleTip = hand[12];
+    const ringTip = hand[16];
+    const pinkyTip = hand[20];
+    const scale = dist(wrist, hand[9]) || 0.001;
+
+    const thumbIndexDistance = dist(thumb, indexTip) / scale;
+    const indexExtended = dist(indexTip, wrist) > dist(hand[5], wrist) * 1.2;
+    const middleClosed = dist(middleTip, wrist) < dist(hand[9], wrist) * 0.9;
+    const ringClosed = dist(ringTip, wrist) < dist(hand[9], wrist) * 0.9;
+    const pinkyClosed = dist(pinkyTip, wrist) < dist(hand[9], wrist) * 0.9;
+
+    if (thumbIndexDistance < 0.75 && indexExtended && middleClosed && ringClosed && pinkyClosed) {
+      return 1;
+    }
+    return 0;
+  }
+
+  function detectDoubleHeartGesture(handList) {
+    if (!Array.isArray(handList) || handList.length < 2) return false;
+    const scores = handList.map(handHeartScore);
+    if (!scores.every(score => score === 1)) return false;
+
+    const centers = handList.map(hand => {
+      const total = hand.reduce((sum, p) => ({ x: sum.x + p.x, y: sum.y + p.y }), { x: 0, y: 0 });
+      return { x: total.x / hand.length, y: total.y / hand.length };
+    });
+
+    const dx = Math.abs(centers[0].x - centers[1].x);
+    const dy = Math.abs(centers[0].y - centers[1].y);
+    return dx > 0.12 && dx < 0.6 && dy < 0.45;
+  }
+
+  function triggerFarewell(now) {
+    const cooldown = now - farewellLastTriggeredAt;
+    if (cooldown < 5000) return;
+    farewellLastTriggeredAt = now;
+    document.dispatchEvent(new CustomEvent('rg-farewell'));
+  }
+
+  function maybeTriggerFarewell(now, handList) {
+    if (!handList || handList.length < 2) {
+      farewellHoldStart = 0;
+      return;
+    }
+
+    if (detectDoubleHeartGesture(handList)) {
+      if (!farewellHoldStart) farewellHoldStart = now;
+      if (now - farewellHoldStart >= 900) {
+        triggerFarewell(now);
+        farewellHoldStart = 0;
+      }
+    } else {
+      farewellHoldStart = 0;
+    }
   }
 
   function loadMediapipe() {
@@ -136,6 +203,12 @@ const RG_VISION = (() => {
     }
 
     const handsList = (res && res.multiHandLandmarks) || [];
+    if (handsList.length >= 2) {
+      maybeTriggerFarewell(now, handsList);
+    } else {
+      farewellHoldStart = 0;
+    }
+
     const lm = settings && settings.dominantHandMode !== false ? selectPrimaryHand(handsList) : (handsList[0] || null);
     drawPreview(lm);
     onFrame({ landmarks: lm, fps, now, handCount: handsList.length });
@@ -191,7 +264,7 @@ const RG_VISION = (() => {
     onStatus('Cargando IA de manos…');
     try {
       await loadMediapipe();
-      onStatus('Listo. Muestra tu mano.');
+      onStatus('Listo. Haz un corazón con dos manos para guardar la foto.');
     } catch (err) {
       onStatus(err.message);
     }
@@ -202,6 +275,7 @@ const RG_VISION = (() => {
 
   function stop() {
     running = false;
+    farewellHoldStart = 0;
     if (stream) stream.getTracks().forEach(t => t.stop());
     stream = null;
   }
