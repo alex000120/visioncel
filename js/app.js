@@ -215,8 +215,15 @@
     RG_UI.updateVolume();
   }
 
-  function onFrame({ landmarks, fps, now }) {
+  function onFrame({ landmarks, fps, now, handCount }) {
     $('det-fps').textContent = fps + ' FPS';
+
+    if (handCount >= 2) {
+      $('det-hand').textContent = '2 manos detectadas';
+      engine.reset();
+      return;
+    }
+
     $('det-hand').textContent = landmarks ? 'Mano detectada' : 'Sin mano';
     if (landmarks) {
       RG_UI.showControls();
@@ -238,7 +245,7 @@
         onStatus: t => { $('status').textContent = t; }
       });
       if (RG_VISION.isReady()) {
-        $('status').textContent = 'Listo. Muestra tu mano cuando quieras.';
+        $('status').textContent = 'Listo. Haz un corazón con dos manos para guardar la foto.';
         setTimeout(hideStart, 600);
         RG_UI.toast('✋', 'Cámara lista');
       } else {
@@ -286,6 +293,7 @@
     $('missing-close').addEventListener('click', () => $('missing').classList.remove('show'));
     $('btn-farewell-close').addEventListener('click', closeFarewellModal);
     $('btn-farewell-save').addEventListener('click', saveFarewellPhoto);
+    document.addEventListener('rg-farewell', openFarewellModal);
 
     window.addEventListener('keydown', e => {
       if (e.target && e.target.tagName === 'INPUT') return;
@@ -328,4 +336,3 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
-
