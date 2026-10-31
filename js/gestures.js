@@ -1,8 +1,8 @@
 /* ==========================================================================
    RECONOCIMIENTO DE GESTOS
    - analyze(): calcula dedos extendidos, pellizco, dirección del pulgar y puntero
-   - classify(): convierte eso en un nombre de gesto usando consenso temporal
-   - GestureEngine: confirma gestos y dispara acciones con más robustez.
+   - classify(): convierte eso en un nombre de gesto
+   - GestureEngine: confirma gestos en el tiempo y dispara acciones
    ========================================================================== */
 const RG_GESTURE = (() => {
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -19,14 +19,6 @@ const RG_GESTURE = (() => {
       pinky: ext(20, 18)
     };
 
-    const palmCenter = {
-      x: (lm[0].x + lm[5].x + lm[9].x + lm[13].x + lm[17].x) / 5,
-      y: (lm[0].y + lm[5].y + lm[9].y + lm[13].y + lm[17].y) / 5
-    };
-
-    const palmWidth = dist(lm[5], lm[17]) || 0;
-    const fingerSpread = [8, 12, 16, 20].reduce((sum, idx) => sum + dist(lm[idx], palmCenter), 0) / 4;
-
     return {
       fingers,
       thumbExt: dist(lm[4], wrist) > dist(lm[3], wrist) * 1.1,
@@ -34,11 +26,9 @@ const RG_GESTURE = (() => {
       pinchRatio: dist(lm[4], lm[8]) / scale,
       cursor: { x: 1 - lm[8].x, y: lm[8].y },
       wristX: 1 - wrist.x,
-      palmCenter: { x: 1 - palmCenter.x, y: palmCenter.y },
-      palmWidth,
-      handScale: scale,
-      spread: fingerSpread,
-      openPalm: Object.values(fingers).filter(Boolean).length >= 3
+      openPalm: Object.values(fingers).filter(Boolean).length >= 3,
+      palmWidth: dist(lm[5], lm[17]) || 0,
+      handScale: scale
     };
   }
 
@@ -87,7 +77,9 @@ class GestureEngine {
       movementDeadzone: 0.04,
       gestureSensitivity: 1.15,
       stabilityWindow: 6,
-      adaptiveThreshold: true
+      adaptiveThreshold: true,
+      maxNumHands: 2,
+      dominantHandMode: true
     };
     this.pinch = false;
     this.stable = 'none';
@@ -144,7 +136,7 @@ class GestureEngine {
       return 'pinch';
     }
 
-    this.history.push({ x: a.palmCenter.x, t: now });
+    this.history.push({ x: a.cursor.x, t: now });
     this.history = this.history.filter(p => now - p.t <= 300);
     const xs = this.history.map(p => p.x);
     const deadzone = this.opts.movementDeadzone ?? 0.04;
@@ -158,7 +150,7 @@ class GestureEngine {
 
     if (resolved === 'palm' && this.history.length > 1 && now > this.swipeLockUntil) {
       const oldest = this.history[0];
-      const dx = a.palmCenter.x - oldest.x;
+      const dx = a.cursor.x - oldest.x;
       const threshold = (this.opts.swipeThreshold ?? 0.12) / Math.max(0.5, this.opts.gestureSensitivity || 1);
       if (Math.abs(dx) > threshold && now - oldest.t >= 100) {
         this.h.onAction(dx > 0 ? 'seek+' : 'seek-');

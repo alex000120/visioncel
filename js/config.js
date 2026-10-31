@@ -55,6 +55,8 @@ const RG_CONFIG = {
     gestureSensitivity: 1.15,
     stabilityWindow: 6,
     adaptiveThreshold: true,
+    maxNumHands: 2,
+    dominantHandMode: true,
     showHand: true,
     showCursor: true,
     showPreview: true,

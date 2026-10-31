@@ -2,6 +2,7 @@
    VISIÓN: cámara + MediaPipe Hands + mini cámara de diagnóstico
    - Reduce la imagen según el perfil (menos píxeles = más fluidez)
    - Limita los FPS de detección para no saturar el equipo
+   - Soporta dos manos, priorizando la más dominante para evitar conflictos
    ========================================================================== */
 const RG_VISION = (() => {
   const cam = document.getElementById('cam');
@@ -31,6 +32,32 @@ const RG_VISION = (() => {
 
   const hasCamera = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
+  function scoreHand(lm) {
+    if (!lm || !lm.length) return -Infinity;
+    const wrist = lm[0];
+    const center = lm.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+    const cx = center.x / lm.length;
+    const cy = center.y / lm.length;
+    const area = lm.reduce((sum, p) => sum + Math.abs(p.x - wrist.x) + Math.abs(p.y - wrist.y), 0);
+    const centrality = 1 - (Math.abs(cx - 0.5) + Math.abs(cy - 0.5)) * 1.5;
+    return area + centrality * 0.5;
+  }
+
+  function selectPrimaryHand(list) {
+    if (!list || !list.length) return null;
+    if (list.length === 1) return list[0];
+    let best = list[0];
+    let bestScore = scoreHand(best);
+    for (let i = 1; i < list.length; i++) {
+      const score = scoreHand(list[i]);
+      if (score > bestScore) {
+        best = list[i];
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
   function loadMediapipe() {
     const base = `https://cdn.jsdelivr.net/npm/@mediapipe/hands@${RG_CONFIG.mediapipeVersion}`;
     return new Promise((resolve, reject) => {
@@ -44,7 +71,7 @@ const RG_VISION = (() => {
     }).then(() => {
       hands = new window.Hands({ locateFile: f => `${base}/${f}` });
       hands.setOptions({
-        maxNumHands: 1,
+        maxNumHands: Math.max(1, Number(settings.maxNumHands) || 2),
         modelComplexity: settings.complexity,
         minDetectionConfidence: settings.minDetect,
         minTrackingConfidence: settings.minTrack,
@@ -64,7 +91,6 @@ const RG_VISION = (() => {
     await cam.play();
   }
 
-  /* Dibuja el cuadro de cámara reducido (y el esqueleto de la mano) en la mini pantalla */
   function drawPreview(lm) {
     if (!settings.showPreview) return;
     const W = settings.previewSize;
@@ -74,7 +100,7 @@ const RG_VISION = (() => {
     pctx.save();
     pctx.clearRect(0, 0, W, H);
     pctx.translate(W, 0);
-    pctx.scale(-1, 1);                      // vista espejo, como un espejo real
+    pctx.scale(-1, 1);
     pctx.drawImage(work, 0, 0, W, H);
     pctx.restore();
 
@@ -108,12 +134,13 @@ const RG_VISION = (() => {
       frames = 0;
       fpsStart = now;
     }
-    const lm = (res && res.multiHandLandmarks && res.multiHandLandmarks[0]) || null;
+
+    const handsList = (res && res.multiHandLandmarks) || [];
+    const lm = settings && settings.dominantHandMode !== false ? selectPrimaryHand(handsList) : (handsList[0] || null);
     drawPreview(lm);
-    onFrame({ landmarks: lm, fps, now });
+    onFrame({ landmarks: lm, fps, now, handCount: handsList.length });
   }
 
-  /* Copia el cuadro actual a una imagen pequeña y la envía a la IA */
   function sendFrame() {
     if (cam.readyState < 2 || !cam.videoWidth) return;
     const w = Math.min(settings.width, cam.videoWidth);
@@ -127,7 +154,7 @@ const RG_VISION = (() => {
         .catch(() => {})
         .finally(() => { busy = false; });
     } else if (!handsReady) {
-      drawPreview(null);       // sin IA todavía: al menos se ve la cámara
+      drawPreview(null);
     }
   }
 
@@ -144,6 +171,7 @@ const RG_VISION = (() => {
     settings = s;
     if (handsReady) {
       hands.setOptions({
+        maxNumHands: Math.max(1, Number(s.maxNumHands) || 2),
         modelComplexity: s.complexity,
         minDetectionConfidence: s.minDetect,
         minTrackingConfidence: s.minTrack
@@ -152,7 +180,6 @@ const RG_VISION = (() => {
     prev.style.display = s.showPreview ? 'block' : 'none';
   }
 
-  /* Arranca cámara e IA. Devuelve una promesa (lanza error si la cámara falla) */
   async function start(s, handlers) {
     settings = s;
     onFrame = handlers.onFrame;
