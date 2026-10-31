@@ -19,13 +19,13 @@ const RG_POINTER = (() => {
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
   let settings = null;
-  let target = null;            // posición deseada (px)
-  let pos = null;               // posición suavizada (px)
-  let handPts = null;           // 21 puntos de la mano en px (suavizados)
+  let target = null;
+  let pos = null;
+  let handPts = null;
   let lastSeen = 0;
   let visible = false;
   let hoverEl = null;
-  let drag = null;              // { type: 'slider'|'scroll', el, lastY }
+  let drag = null;
   let frame = 0;
   let onClick = () => {};
   let onRipple = () => {};
@@ -41,8 +41,6 @@ const RG_POINTER = (() => {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
 
-  /* Convierte coordenadas de cámara (0..1) a pantalla (px). La zona muerta
-     "margin" permite llegar a los bordes sin mover toda la mano hasta el límite. */
   function toScreen(x, y) {
     const m = settings.margin;
     const u = clamp((x - m) / (1 - 2 * m), 0, 1);
@@ -63,14 +61,12 @@ const RG_POINTER = (() => {
     if (hoverEl) hoverEl.classList.add('hover');
   }
 
-  /* Llamado por GestureEngine en cada detección con la mano visible */
   function onCursor(x, y, landmarks) {
     lastSeen = performance.now();
     const p = toScreen(x, y);
     target = p;
     if (!pos) pos = { x: p.x, y: p.y };
 
-    // Toda la mano en pantalla (espejo + mismo mapeo que el cursor)
     const pts = landmarks.map(l => toScreen(1 - l.x, l.y));
     if (!handPts) handPts = pts;
     else handPts = handPts.map((h, i) => ({
@@ -117,7 +113,6 @@ const RG_POINTER = (() => {
     drag = null;
   }
 
-  /* Ajusta un slider según la posición horizontal del puntero */
   function slide(el, x) {
     const r = el.getBoundingClientRect();
     const f = clamp((x - r.left) / (r.width || 1), 0, 1);
@@ -139,7 +134,6 @@ const RG_POINTER = (() => {
     ctx.globalAlpha = alpha;
     const pinching = cursorEl.classList.contains('pinch');
 
-    // Cuerpo de la mano: líneas con brillo
     ctx.lineCap = 'round';
     ctx.strokeStyle = pinching ? 'rgba(251,191,36,.9)' : 'rgba(56,189,248,.75)';
     ctx.lineWidth = 6;
@@ -152,7 +146,6 @@ const RG_POINTER = (() => {
     });
     ctx.stroke();
 
-    // Articulaciones
     ctx.shadowBlur = 0;
     ctx.fillStyle = 'rgba(255,255,255,.95)';
     handPts.forEach((p, i) => {
@@ -163,7 +156,6 @@ const RG_POINTER = (() => {
     ctx.globalAlpha = 1;
   }
 
-  /* Bucle de render: suaviza el cursor, actualiza hover y dibuja la mano */
   function tick(now) {
     requestAnimationFrame(tick);
     frame++;
@@ -172,14 +164,15 @@ const RG_POINTER = (() => {
 
     if (target && pos) {
       const d = dist(pos, target);
-      const base = 1 - settings.smoothing * 0.85;      // más suavizado = más lento
-      const a = Math.min(1, base + d / 140);           // movimientos rápidos responden rápido
+      const base = 1 - settings.smoothing * 0.85;
+      const a = Math.min(1, base + d / 140);
       pos.x += (target.x - pos.x) * a;
       pos.y += (target.y - pos.y) * a;
     }
 
-    cursorEl.style.opacity = seen ? '1' : '0';
-    if (seen && pos) cursorEl.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
+    const shouldShowCursor = seen && settings.showCursor;
+    cursorEl.style.opacity = shouldShowCursor ? '1' : '0';
+    if (shouldShowCursor && pos) cursorEl.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
 
     if (seen && frame % 2 === 0) {
       const el = hitTest();

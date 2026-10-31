@@ -1,9 +1,14 @@
+/* ==========================================================================
+   APP PRINCIPAL
+   Une cámara → gestos → acciones del reproductor, y los botones de la interfaz.
+   Cada gesto dispara una acción concreta (ver ACTIONS).
+   ========================================================================== */
 (() => {
   const $ = id => document.getElementById(id);
   let settings = null;
   let engine = null;
+  let noHandPauseTimer = null;
 
-  /* ---------- Acciones: una función concreta por gesto/botón ---------- */
   const ACTIONS = {
     'toggle-play': () => {
       const playing = RG_PLAYER.togglePlay();
@@ -48,7 +53,6 @@
     RG_UI.showControls();
   }
 
-  /* ---------- Aplicar ajustes (globales y por dispositivo) ---------- */
   function applyVisual(s) {
     const b = document.body.classList;
     b.toggle('fx-reduced', s.effects === 'reducidos');
@@ -79,15 +83,29 @@
     RG_UI.updateVolume();
   }
 
-  /* ---------- Frames de la cámara → motor de gestos ---------- */
   function onFrame({ landmarks, fps, now }) {
     $('det-fps').textContent = fps + ' FPS';
     $('det-hand').textContent = landmarks ? 'Mano detectada' : 'Sin mano';
-    if (landmarks) RG_UI.showControls();
+    if (landmarks) {
+      RG_UI.showControls();
+      if (noHandPauseTimer) {
+        clearTimeout(noHandPauseTimer);
+        noHandPauseTimer = null;
+      }
+    } else if (settings.pauseOnNoHand) {
+      const ms = settings.noHandPauseMs ?? 1800;
+      if (!noHandPauseTimer) {
+        noHandPauseTimer = setTimeout(() => {
+          if (!RG_PLAYER.el.paused) {
+            RG_PLAYER.pause();
+            RG_UI.toast('⏸', 'Pausa automática por ausencia de mano');
+          }
+        }, ms);
+      }
+    }
     engine.update(landmarks, now);
   }
 
-  /* ---------- Inicio: se necesita un toque para activar cámara y sonido ---------- */
   async function start() {
     $('btn-start').disabled = true;
     RG_PLAYER.load(0, true);
@@ -114,7 +132,6 @@
 
   function hideStart() { $('start').classList.add('hidden'); }
 
-  /* ---------- Teclado y botones (respaldo sin cámara) ---------- */
   const KEYS = {
     ' ': 'toggle-play', 'k': 'toggle-play',
     'ArrowRight': 'seek+', 'ArrowLeft': 'seek-',

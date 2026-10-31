@@ -15,10 +15,8 @@ const RG_CONFIG = {
     { title: 'Video 5 · Cierre',        src: 'videos/video5.mp4', poster: '' }
   ],
 
-  /* Versión fija de MediaPipe Hands (detección de manos por IA en el navegador) */
   mediapipeVersion: '0.4.1675469240',
 
-  /* Cada gesto y su función. La acción real está en app.js (ACTIONS). */
   gestures: [
     { id: 'pointer',    icon: '☝️',  name: 'Índice levantado',       action: 'Mueve el puntero (modo mouse)' },
     { id: 'pinch',      icon: '🤏', name: 'Pellizco',               action: 'Clic. Mantenerlo y mover arrastra barras y listas' },
@@ -33,8 +31,6 @@ const RG_CONFIG = {
     { id: 'fullscreen', icon: '🤙', name: 'Pulgar + meñique',       action: 'Pantalla completa' }
   ],
 
-  /* Perfiles de rendimiento. "width" = ancho de la imagen que analiza la IA.
-     Menos ancho y menos FPS = más fluidez en equipos modestos. */
   presets: {
     ultra:   { label: 'Ultra',   width: 640, fps: 30, complexity: 1, minDetect: 0.6,  effects: 'completos', previewSize: 280, showLandmarks: true,  desc: 'PC potente, máxima precisión' },
     alto:    { label: 'Alto',    width: 480, fps: 30, complexity: 1, minDetect: 0.6,  effects: 'completos', previewSize: 260, showLandmarks: true,  desc: 'Laptop o PC estándar' },
@@ -43,7 +39,6 @@ const RG_CONFIG = {
     ahorro:  { label: 'Ahorro',  width: 256, fps: 10, complexity: 0, minDetect: 0.7,  effects: 'mínimos',   previewSize: 180, showLandmarks: false, desc: 'Máxima fluidez, menos precisión' }
   },
 
-  /* Valores base (se combinan con el perfil del dispositivo) */
   defaults: {
     preset: 'auto',
     width: 480,
@@ -60,12 +55,16 @@ const RG_CONFIG = {
     swipeThreshold: 0.12,
     gestureSensitivity: 1,
     showHand: true,
+    showCursor: true,
     showPreview: true,
     previewSize: 240,
     showLandmarks: true,
+    showGestureGuide: true,
     effects: 'completos',
     mirror: true,
     autoHideMs: 3000,
+    pauseOnNoHand: false,
+    noHandPauseMs: 1800,
     seekStep: 10,
     volumeStep: 0.05
   }

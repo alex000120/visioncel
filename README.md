@@ -2,6 +2,17 @@
 
 Reproductor de 5 videos a pantalla completa que se controla con las manos a distancia, usando la cámara (detección y seguimiento con MediaPipe Hands, todo en el navegador).
 
+## Características principales
+
+- Control por gestos con cámara a través de MediaPipe Hands.
+- Reproducción de playlist local y navegación entre vídeos.
+- Mini cámara de diagnóstico con vista en tiempo real.
+- Ajustes por dispositivo guardados en el navegador.
+- Puntero virtual con clic por pellizco y arrastre de sliders/listas.
+- Configuración avanzada de sensibilidad, confirmación y comportamiento.
+- Modo extra útil: pausar automáticamente si se pierde la mano.
+- Guía de gestos configurable para una interfaz más limpia.
+
 ## Estructura
 
 ```
@@ -52,4 +63,5 @@ En **Ajustes → Dispositivo** se elige un perfil (Auto, Ultra, Alto, Medio, Baj
 
 - La pantalla completa desde gesto depende del navegador; si lo bloquea, usa el botón ⛶ o la tecla F.
 - Si no hay cámara, la app funciona igual con mouse y teclado.
-- Teclado: Espacio, ← →, ↑ ↓, M, N, B, S, F, L, Esc.
+- Teclado: Espacio, ← →, ↑ ↓, M, N, B, S, F, L, P, Esc.
+- En comportamiento puedes activar una pausa automática al perder la mano para ahorrar atención y evitar acciones accidentales.

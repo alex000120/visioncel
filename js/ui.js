@@ -102,8 +102,9 @@ const RG_UI = (() => {
   }
 
   function highlightGesture(id) {
+    const showGuide = RG_SETTINGS.get().showGestureGuide !== false;
     document.querySelectorAll('.guide-row').forEach(r => {
-      r.classList.toggle('detected', r.dataset.gesture === id);
+      r.classList.toggle('detected', showGuide && r.dataset.gesture === id);
     });
     const g = RG_CONFIG.gestures.find(x => x.id === id);
     $('det-gesture').textContent = g ? `${g.icon} ${g.name}` : '—';
@@ -226,19 +227,32 @@ const RG_UI = (() => {
     sec.appendChild(field('Zona de alcance', range('margin', 0, 0.3, 0.01, s.margin, v => Math.round(v * 100) + '%'), 'llega a las esquinas'));
     sec.appendChild(field('Tiempo para activar gestos', range('holdMs', 200, 900, 50, s.holdMs, v => v + ' ms')));
     sec.appendChild(field('Mostrar mano en pantalla', toggle('showHand', s.showHand)));
+    sec.appendChild(field('Mostrar puntero virtual', toggle('showCursor', s.showCursor !== false)));
+
+    sec = section('Comportamiento');
+    sec.appendChild(field('Pausar al perder la mano', toggle('pauseOnNoHand', !!s.pauseOnNoHand)));
+    sec.appendChild(field('Tiempo sin mano para pausar', range('noHandPauseMs', 800, 4000, 100, s.noHandPauseMs ?? 1800, v => v + ' ms')));
 
     sec = section('Interfaz');
     sec.appendChild(field('Mini cámara de diagnóstico', toggle('showPreview', s.showPreview)));
     sec.appendChild(field('Tamaño de la mini cámara', segmented('previewSize', [[160, 'S'], [200, 'M'], [240, 'L'], [280, 'XL']], s.previewSize)));
     sec.appendChild(field('Dibujar esqueleto en la cámara', toggle('showLandmarks', s.showLandmarks)));
+    sec.appendChild(field('Mostrar guía de gestos', toggle('showGestureGuide', s.showGestureGuide !== false)));
     sec.appendChild(field('Efectos visuales', segmented('effects', [['completos', 'Completos'], ['reducidos', 'Reducidos'], ['mínimos', 'Mínimos']], s.effects), 'mínimos = más fluido'));
     sec.appendChild(field('Ocultar controles tras', range('autoHideMs', 1000, 6000, 500, s.autoHideMs, v => (v / 1000).toFixed(1) + ' s')));
 
     sec = section('Gestos y funciones');
-    const box = document.createElement('div');
-    box.className = 'guide';
-    sec.appendChild(box);
-    renderGuideInto(box);
+    if (s.showGestureGuide !== false) {
+      const box = document.createElement('div');
+      box.className = 'guide';
+      sec.appendChild(box);
+      renderGuideInto(box);
+    } else {
+      const note = document.createElement('div');
+      note.className = 'empty-note';
+      note.textContent = 'La guía está oculta. Puedes activarla desde Interfaz.';
+      sec.appendChild(note);
+    }
   }
 
   function renderGuideInto(box) {
