@@ -66,7 +66,7 @@ const RG_CONFIG = {
     effects: 'completos',
     mirror: true,
     autoHideMs: 3000,
-    pauseOnNoHand: true,
+    pauseOnNoHand: false,
     noHandPauseMs: 1800,
     seekStep: 10,
     volumeStep: 0.05

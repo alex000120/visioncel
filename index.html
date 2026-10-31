@@ -13,18 +13,12 @@
 </head>
 <body class="show-controls">
 
-  <!-- Video a pantalla completa -->
   <video id="player" playsinline preload="auto"></video>
-
-  <!-- Mano dibujada sobre la pantalla + cursor virtual -->
   <canvas id="overlay"></canvas>
   <div id="cursor" aria-hidden="true"><span class="ring"></span><span class="dot"></span></div>
   <div id="ripples" aria-hidden="true"></div>
-
-  <!-- Cámara oculta (fuente de la IA) -->
   <video id="cam" playsinline muted></video>
 
-  <!-- Barra superior -->
   <header id="topbar">
     <div class="brand"><span class="logo">◉</span> Gesto Player</div>
     <div class="now">
@@ -33,7 +27,6 @@
     </div>
   </header>
 
-  <!-- Mini cámara con diagnóstico de gestos -->
   <aside id="pip" class="glass" aria-label="Vista de la cámara">
     <div class="pip-head">
       <span class="pip-title">Cámara</span>
@@ -46,7 +39,6 @@
     </div>
   </aside>
 
-  <!-- Barra de control inferior -->
   <footer id="controls" class="glass">
     <div class="slider seek" data-slider="seek" data-hit>
       <div class="track"><div id="seek-fill" class="fill"></div></div>
@@ -72,7 +64,6 @@
     </div>
   </footer>
 
-  <!-- Lista de videos -->
   <aside id="playlist" class="panel glass" aria-label="Lista de videos">
     <div class="panel-head">
       <h2>Videos</h2>
@@ -81,7 +72,6 @@
     <div id="playlist-list" class="panel-body" data-scroll></div>
   </aside>
 
-  <!-- Ajustes por dispositivo -->
   <aside id="settings" class="panel glass" aria-label="Configuración">
     <div class="panel-head">
       <h2>Configuración</h2>
@@ -90,20 +80,23 @@
     <div id="settings-body" class="panel-body" data-scroll></div>
   </aside>
 
-  <!-- Pantalla de inicio (la cámara necesita un toque del usuario) -->
   <section id="start" class="start">
     <div class="start-card glass">
       <div class="start-logo">◉</div>
       <h1>Gesto Player</h1>
-      <p>Controla los videos con las manos a distancia. Activa la cámara y muestra tu mano.</p>
-      <button id="btn-start" class="cta">Activar cámara y empezar</button>
+      <p>Elige cómo quieres entrar al control por gestos.</p>
+
+      <div class="start-actions">
+        <button id="btn-start" class="cta">Activar cámara</button>
+        <button id="btn-demo" class="cta">Modo demo</button>
+      </div>
+
       <button id="btn-skip" class="link" hidden>Continuar sin cámara</button>
       <p id="status" class="status" role="status"></p>
-      <small class="hint">Teclado de respaldo: Espacio, ← →, ↑ ↓, M, N, B, S, F, L</small>
+      <small class="hint">Teclado de respaldo: Espacio, ← →, ↑ ↓, M, N, B, S, F, L, P</small>
     </div>
   </section>
 
-  <!-- Aviso si falta un video -->
   <div id="missing" class="notice glass">
     <p id="missing-text"></p>
     <button id="missing-close" class="text" data-hit>Entendido</button>

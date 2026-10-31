@@ -1,8 +1,3 @@
-/* ==========================================================================
-   APP PRINCIPAL
-   Une cámara → gestos → acciones del reproductor, y los botones de la interfaz.
-   Cada gesto dispara una acción concreta (ver ACTIONS).
-   ========================================================================== */
 (() => {
   const $ = id => document.getElementById(id);
   let settings = null;
@@ -70,7 +65,9 @@
       movementDeadzone: s.movementDeadzone ?? 0.04,
       gestureSensitivity: s.gestureSensitivity ?? 1.15,
       stabilityWindow: s.stabilityWindow ?? 6,
-      adaptiveThreshold: s.adaptiveThreshold !== false
+      adaptiveThreshold: s.adaptiveThreshold !== false,
+      maxNumHands: s.maxNumHands || 2,
+      dominantHandMode: s.dominantHandMode !== false
     });
   }
 
@@ -95,42 +92,39 @@
         clearTimeout(noHandPauseTimer);
         noHandPauseTimer = null;
       }
-    } else if (settings.pauseOnNoHand) {
-      const ms = settings.noHandPauseMs ?? 1800;
-      if (!noHandPauseTimer) {
-        noHandPauseTimer = setTimeout(() => {
-          if (!RG_PLAYER.el.paused) {
-            RG_PLAYER.pause();
-            RG_UI.toast('⏸', 'Pausa automática por ausencia de mano');
-          }
-        }, ms);
-      }
     }
     engine.update(landmarks, now);
   }
 
-  async function start() {
+  async function startCameraOnly() {
     $('btn-start').disabled = true;
-    RG_PLAYER.load(0, true);
+    $('btn-demo').disabled = true;
     try {
+      $('status').textContent = 'Preparando cámara…';
       await RG_VISION.start(settings, {
         onFrame,
         onStatus: t => { $('status').textContent = t; }
       });
       if (RG_VISION.isReady()) {
-        $('status').textContent = 'Listo. Muestra tu mano.';
+        $('status').textContent = 'Listo. Muestra tu mano cuando quieras.';
         setTimeout(hideStart, 600);
-        RG_UI.toast('✋', 'Control por gestos activo');
+        RG_UI.toast('✋', 'Cámara lista');
       } else {
+        $('status').textContent = 'Cámara lista, pero la IA no respondió.';
         $('btn-start').disabled = false;
-        $('btn-skip').hidden = false;
-        RG_UI.toast('⚠', 'IA de manos no disponible. Usa el mouse o el teclado.');
+        $('btn-demo').disabled = false;
       }
     } catch (err) {
       $('status').textContent = err.message;
       $('btn-start').disabled = false;
-      $('btn-skip').hidden = false;
+      $('btn-demo').disabled = false;
     }
+  }
+
+  function startDemo() {
+    RG_PLAYER.load(0, false);
+    hideStart();
+    RG_UI.toast('▶', 'Modo demo abierto');
   }
 
   function hideStart() { $('start').classList.add('hidden'); }
@@ -144,7 +138,8 @@
   };
 
   function bindUI() {
-    $('btn-start').addEventListener('click', start);
+    $('btn-start').addEventListener('click', startCameraOnly);
+    $('btn-demo').addEventListener('click', startDemo);
     $('btn-skip').addEventListener('click', hideStart);
     $('btn-play').addEventListener('click', () => dispatch('toggle-play'));
     $('btn-prev').addEventListener('click', () => dispatch('prev'));
