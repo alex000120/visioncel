@@ -26,7 +26,8 @@ const RG_CONFIG = {
     { id: 'vol_up',     icon: '👍', name: 'Pulgar arriba',          action: 'Subir volumen (se repite)' },
     { id: 'vol_down',   icon: '👎', name: 'Pulgar abajo',           action: 'Bajar volumen (se repite)' },
     { id: 'menu',       icon: '🤘', name: 'Índice + meñique',       action: 'Abrir / cerrar ajustes' },
-    { id: 'fullscreen', icon: '🤙', name: 'Pulgar + meñique',       action: 'Pantalla completa' }
+    { id: 'fullscreen', icon: '🤙', name: 'Pulgar + meñique',       action: 'Pantalla completa' },
+    { id: 'heart',      icon: '💗', name: 'Seña de cariño',         action: 'Abre la foto de despedida (sin activarse por accidente)' }
   ],
 
   presets: {
@@ -72,3 +73,4 @@ const RG_CONFIG = {
     volumeStep: 0.05
   }
 };
+

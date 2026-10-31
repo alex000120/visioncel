@@ -19,6 +19,9 @@ const RG_GESTURE = (() => {
       pinky: ext(20, 18)
     };
 
+    const thumbNearIndex = dist(lm[4], lm[8]) < scale * 0.42;
+    const heartSign = fingers.index && !fingers.middle && !fingers.ring && !fingers.pinky && dist(lm[4], lm[8]) < scale * 0.42 && dist(lm[4], lm[3]) > scale * 0.2;
+
     return {
       fingers,
       thumbExt: dist(lm[4], wrist) > dist(lm[3], wrist) * 1.1,
@@ -28,7 +31,9 @@ const RG_GESTURE = (() => {
       wristX: 1 - wrist.x,
       openPalm: Object.values(fingers).filter(Boolean).length >= 3,
       palmWidth: dist(lm[5], lm[17]) || 0,
-      handScale: scale
+      handScale: scale,
+      heartSign,
+      thumbNearIndex
     };
   }
 
@@ -36,6 +41,7 @@ const RG_GESTURE = (() => {
     const { index, middle, ring, pinky } = a.fingers;
     const up = [index, middle, ring, pinky].filter(Boolean).length;
 
+    if (a.heartSign) return 'heart';
     if (a.pinchRatio < 0.32) return 'pinch';
     if (up === 4 && a.openPalm && a.palmWidth > a.handScale * 0.38) return 'palm';
     if (up === 0) {
@@ -62,7 +68,8 @@ const RG_ACTION_MAP = {
   menu: 'menu',
   fullscreen: 'fullscreen',
   vol_up: 'vol+',
-  vol_down: 'vol-'
+  vol_down: 'vol-',
+  heart: 'farewell'
 };
 
 class GestureEngine {
@@ -212,6 +219,15 @@ class GestureEngine {
       return;
     }
 
+    if (s === 'heart') {
+      if (held >= 950 && !this.fired && now - this.lastFire > 1800) {
+        this.fired = true;
+        this.lastFire = now;
+        this.h.onAction(act);
+      }
+      return;
+    }
+
     if (this.fired) return;
     if (held >= (this.opts.holdMs ?? 420) && now - this.lastFire > 600 && now > this.swipeLockUntil) {
       this.fired = true;
@@ -220,3 +236,4 @@ class GestureEngine {
     }
   }
 }
+

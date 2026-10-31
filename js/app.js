@@ -4,6 +4,135 @@
   let engine = null;
   let noHandPauseTimer = null;
 
+  const farewellSchool = 'CEJA LIDORO QUINTEROS\nSUBSEDE N°1 LOS RALOS';
+
+  function drawHeartPath(ctx, x, y, size) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + size * 0.3);
+    ctx.bezierCurveTo(x - size, y - size * 0.4, x - size * 1.8, y + size * 0.1, x, y + size * 1.3);
+    ctx.bezierCurveTo(x + size * 1.8, y + size * 0.1, x + size, y - size * 0.4, x, y + size * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function wrapText(ctx, text, maxWidth, lineHeight) {
+    const paragraphs = text.split('\n');
+    const lines = [];
+    paragraphs.forEach(paragraph => {
+      const words = paragraph.split(' ');
+      let current = '';
+      words.forEach(word => {
+        const candidate = current ? current + ' ' + word : word;
+        if (ctx.measureText(candidate).width > maxWidth && current) {
+          lines.push(current);
+          current = word;
+        } else {
+          current = candidate;
+        }
+      });
+      if (current) lines.push(current);
+    });
+    return lines;
+  }
+
+  function renderFarewellPhoto() {
+    const canvas = $('farewell-canvas');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const bg = ctx.createLinearGradient(0, 0, w, h);
+    bg.addColorStop(0, '#fff8f4');
+    bg.addColorStop(0.5, '#ffe0ee');
+    bg.addColorStop(1, '#fdf0d8');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    for (let i = 0; i < 12; i++) {
+      ctx.beginPath();
+      ctx.arc(80 + i * 62, 90 + (i % 3) * 130, 24 + (i % 4) * 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const frameX = 62;
+    const frameY = 70;
+    const frameW = w - 124;
+    const frameH = h - 140;
+    ctx.strokeStyle = '#dca7be';
+    ctx.lineWidth = 16;
+    ctx.strokeRect(frameX, frameY, frameW, frameH);
+
+    ctx.strokeStyle = '#f4d58a';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(frameX + 18, frameY + 18, frameW - 36, frameH - 36);
+
+    ctx.fillStyle = '#f8dde9';
+    ctx.beginPath();
+    ctx.roundRect(frameX + 42, frameY + 40, frameW - 84, frameH - 18 - 180, 30);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffbfd5';
+    drawHeartPath(ctx, w * 0.5, h * 0.21, 86);
+
+    ctx.fillStyle = '#5e2d42';
+    ctx.textAlign = 'center';
+    ctx.font = '700 42px "Outfit", sans-serif';
+    const title = 'Gracias por visitar';
+    ctx.fillText(title, w / 2, h * 0.31);
+
+    ctx.font = '700 28px "Outfit", sans-serif';
+    const titleSmall = 'nuestro stand';
+    ctx.fillText(titleSmall, w / 2, h * 0.36);
+
+    const schoolLines = wrapText(ctx, farewellSchool, frameW - 140, 34);
+    ctx.font = '700 34px "Outfit", sans-serif';
+    const schoolY = h * 0.52;
+    const schoolLineHeight = 42;
+    schoolLines.forEach((line, index) => {
+      ctx.fillText(line, w / 2, schoolY + index * schoolLineHeight);
+    });
+
+    ctx.fillStyle = '#f9d67a';
+    ctx.beginPath();
+    ctx.arc(w * 0.2, h * 0.82, 18, 0, Math.PI * 2);
+    ctx.arc(w * 0.8, h * 0.84, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#804c5d';
+    ctx.font = '600 20px "Outfit", sans-serif';
+    ctx.fillText('Con cariño ❤', w / 2, h * 0.9);
+
+    ctx.strokeStyle = '#d9a2b8';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(frameX + 30, h - 80);
+    ctx.lineTo(w - frameX - 30, h - 80);
+    ctx.stroke();
+  }
+
+  function openFarewellModal() {
+    renderFarewellPhoto();
+    $('farewell-modal').classList.remove('hidden');
+    RG_UI.showControls();
+    RG_UI.toast('💗', 'Foto de despedida lista');
+  }
+
+  function closeFarewellModal() {
+    $('farewell-modal').classList.add('hidden');
+  }
+
+  function saveFarewellPhoto() {
+    const canvas = $('farewell-canvas');
+    const link = document.createElement('a');
+    link.download = 'gracias-por-visitar-nuestro-stand.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    RG_UI.toast('💾', 'Foto guardada');
+  }
+
   const ACTIONS = {
     'toggle-play': () => {
       const playing = RG_PLAYER.togglePlay();
@@ -38,6 +167,9 @@
       const next = !settings.showPreview;
       onSettingsChange('showPreview', next);
       RG_UI.toast(next ? '📷' : '🕶️', next ? 'Mini cámara activada' : 'Mini cámara ocultada');
+    },
+    'farewell': () => {
+      openFarewellModal();
     }
   };
 
@@ -152,10 +284,19 @@
     $('btn-close-playlist').addEventListener('click', () => RG_UI.togglePlaylist(false));
     $('btn-pip-toggle').addEventListener('click', () => onSettingsChange('showPreview', !settings.showPreview));
     $('missing-close').addEventListener('click', () => $('missing').classList.remove('show'));
+    $('btn-farewell-close').addEventListener('click', closeFarewellModal);
+    $('btn-farewell-save').addEventListener('click', saveFarewellPhoto);
 
     window.addEventListener('keydown', e => {
       if (e.target && e.target.tagName === 'INPUT') return;
-      if (e.key === 'Escape') { RG_UI.toggleSettings(false); RG_UI.togglePlaylist(false); return; }
+      if (e.key === 'Escape') {
+        if (!$('farewell-modal').classList.contains('hidden')) {
+          closeFarewellModal();
+        } else {
+          RG_UI.toggleSettings(false); RG_UI.togglePlaylist(false);
+        }
+        return;
+      }
       const name = KEYS[e.key];
       if (name) { e.preventDefault(); dispatch(name); }
     });
@@ -179,6 +320,7 @@
     RG_PLAYER.load(0, false);
     applyVisual(settings);
     bindUI();
+    renderFarewellPhoto();
 
     RG_PLAYER.on('autoplay-blocked', () => {});
   }
@@ -186,3 +328,4 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+

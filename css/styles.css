@@ -613,6 +613,63 @@ output {
 .status { min-height: 22px; margin: 16px 0 6px !important; font-size: 14px; }
 .hint { color: var(--ink-soft); font-size: 12px; opacity: .8; }
 
+/* ---------- Modal de foto de despedida ---------- */
+.farewell-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 7, 13, .56);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity .25s ease, visibility .25s ease;
+}
+.farewell-modal.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.farewell-card {
+  position: relative;
+  width: min(520px, 92vw);
+  padding: 18px 18px 16px;
+  border-radius: 30px;
+  background: rgba(20, 18, 26, .78);
+}
+.farewell-card::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 2px solid rgba(255, 196, 220, .75);
+  border-radius: 22px;
+  pointer-events: none;
+}
+.farewell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 2px 6px 10px;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+#farewell-canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 20px;
+  border: 2px solid rgba(255, 211, 215, .6);
+  background: #fffaf6;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .22);
+}
+.farewell-cta {
+  margin-top: 14px;
+}
+
 /* ---------- Avisos ---------- */
 .toast {
   position: fixed;
@@ -701,8 +758,10 @@ body.fx-min #cursor .ring { box-shadow: none; }
   #settings { transform: translateY(100%); }
   body.playlist-open #playlist, body.settings-open #settings { transform: none; }
   body.settings-open #pip { display: none; }
+  .farewell-card { padding: 14px 14px 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
