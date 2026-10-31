@@ -102,6 +102,17 @@
     <button id="missing-close" class="text" data-hit>Entendido</button>
   </div>
 
+  <div id="farewell-modal" class="farewell-modal hidden" aria-live="polite" aria-label="Foto de despedida">
+    <div class="farewell-card glass">
+      <div class="farewell-header">
+        <span>Gracias por visitar</span>
+        <button id="btn-farewell-close" class="mini" aria-label="Cerrar foto">✕</button>
+      </div>
+      <canvas id="farewell-canvas" width="900" height="1200" aria-label="Foto de despedida"></canvas>
+      <button id="btn-farewell-save" class="cta farewell-cta">Guardar foto</button>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="js/config.js"></script>
